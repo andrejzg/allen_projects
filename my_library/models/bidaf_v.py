@@ -241,21 +241,21 @@ class BidirectionalAttentionFlowSimple(Model):
         #                                                                             encoding_dim)
         #
         # ------- Original variant
-        # We replace masked values with something really negative here, so they don't affect the
-        # max below.
-        masked_similarity = util.replace_masked_values(similarity_matrix,
-                                                       question_mask.unsqueeze(1),
-                                                       -1e7)
-        # Shape: (batch_size, passage_length)
-        question_passage_similarity = masked_similarity.max(dim=-1)[0].squeeze(-1)
-        # Shape: (batch_size, passage_length)
-        question_passage_attention = util.masked_softmax(question_passage_similarity, passage_mask)
-        # Shape: (batch_size, encoding_dim)
-        question_passage_vector = util.weighted_sum(encoded_passage, question_passage_attention)
-        # Shape: (batch_size, passage_length, encoding_dim)
-        tiled_question_passage_vector = question_passage_vector.unsqueeze(1).expand(batch_size,
-                                                                                    passage_length,
-                                                                                    encoding_dim)
+        # # We replace masked values with something really negative here, so they don't affect the
+        # # max below.
+        # masked_similarity = util.replace_masked_values(similarity_matrix,
+        #                                                question_mask.unsqueeze(1),
+        #                                                -1e7)
+        # # Shape: (batch_size, passage_length)
+        # question_passage_similarity = masked_similarity.max(dim=-1)[0].squeeze(-1)
+        # # Shape: (batch_size, passage_length)
+        # question_passage_attention = util.masked_softmax(question_passage_similarity, passage_mask)
+        # # Shape: (batch_size, encoding_dim)
+        # question_passage_vector = util.weighted_sum(encoded_passage, question_passage_attention)
+        # # Shape: (batch_size, passage_length, encoding_dim)
+        # tiled_question_passage_vector = question_passage_vector.unsqueeze(1).expand(batch_size,
+        #                                                                             passage_length,
+        #                                                                             encoding_dim)
 
         # ------- END
 
