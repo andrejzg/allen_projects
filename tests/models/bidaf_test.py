@@ -12,7 +12,7 @@ from allennlp.data import DatasetReader, Vocabulary
 from allennlp.data.dataset import Batch
 from allennlp.models import Model
 
-from my_library.models import bidaf_variations as BidirectionalAttentionFlow
+from my_library.models import bidaf_v as BidirectionalAttentionFlow
 
 
 class BidirectionalAttentionFlowTest(ModelTestCase):

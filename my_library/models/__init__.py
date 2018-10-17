@@ -1,2 +1,2 @@
 from my_library.models.academic_paper_classifier import AcademicPaperClassifier
-from my_library.models.bidaf_variations import BidirectionalAttentionFlowSimple
+from my_library.models.bidaf_v import BidirectionalAttentionFlowSimple

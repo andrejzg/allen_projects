@@ -16,7 +16,7 @@ from allennlp.training.metrics import BooleanAccuracy, CategoricalAccuracy, Squa
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-@Model.register("bidaf_q_no_lstm")
+@Model.register("bidaf_v")
 class BidirectionalAttentionFlowSimple(Model):
     """
     MODIFICATION NOTE:
@@ -191,8 +191,10 @@ class BidirectionalAttentionFlowSimple(Model):
         passage_lstm_mask = passage_mask if self._mask_lstms else None
 
         encoded_question = self._dropout(self._phrase_layer(embedded_question, question_lstm_mask))
-        #v5: remember to set token embeddings in the CONFIG JSON
-        encoded_question = self._dropout(embedded_question)
+
+        # # v5:
+        # # remember to set token embeddings in the CONFIG JSON
+        # encoded_question = self._dropout(embedded_question)
 
         encoded_passage = self._dropout(self._phrase_layer(embedded_passage, passage_lstm_mask))
         encoding_dim = encoded_question.size(-1)
@@ -214,17 +216,34 @@ class BidirectionalAttentionFlowSimple(Model):
         tiled_question_passage_vector = util.weighted_sum(q2c_vecs, passage_question_attention)
 
         # v2:
-        q2c_compressor = TimeDistributed(torch.nn.Linear(q2c_vecs.shape[1], encoded_passage.shape[1]))
-        tiled_question_passage_vector = q2c_compressor(q2c_vecs.transpose(-1, -2)).transpose(-1, -2)
+        # q2c_compressor = TimeDistributed(torch.nn.Linear(q2c_vecs.shape[1], encoded_passage.shape[1]))
+        # tiled_question_passage_vector = q2c_compressor(q2c_vecs.transpose(-1, -2)).transpose(-1, -2)
 
         # v3:
-        q2c_compressor = TimeDistributed(torch.nn.Linear(q2c_vecs.shape[1], 1))
-        tiled_question_passage_vector = q2c_compressor(q2c_vecs.transpose(-1, -2)).squeeze().unsqueeze(1).expand(batch_size, passage_length, encoding_dim)
+        # q2c_compressor = TimeDistributed(torch.nn.Linear(q2c_vecs.shape[1], 1))
+        # tiled_question_passage_vector = q2c_compressor(q2c_vecs.transpose(-1, -2)).squeeze().unsqueeze(1).expand(batch_size, passage_length, encoding_dim)
 
         # v4:
         # Re-application of query2context attention
-        new_similarity_matrix = self._matrix_attention(encoded_passage, q2c_vecs)
-        masked_similarity = util.replace_masked_values(new_similarity_matrix,
+        # new_similarity_matrix = self._matrix_attention(encoded_passage, q2c_vecs)
+        # masked_similarity = util.replace_masked_values(new_similarity_matrix,
+        #                                                question_mask.unsqueeze(1),
+        #                                                -1e7)
+        # # Shape: (batch_size, passage_length)
+        # question_passage_similarity = masked_similarity.max(dim=-1)[0].squeeze(-1)
+        # # Shape: (batch_size, passage_length)
+        # question_passage_attention = util.masked_softmax(question_passage_similarity, passage_mask)
+        # # Shape: (batch_size, encoding_dim)
+        # question_passage_vector = util.weighted_sum(encoded_passage, question_passage_attention)
+        # # Shape: (batch_size, passage_length, encoding_dim)
+        # tiled_question_passage_vector = question_passage_vector.unsqueeze(1).expand(batch_size,
+        #                                                                             passage_length,
+        #                                                                             encoding_dim)
+        #
+        # ------- Original variant
+        # We replace masked values with something really negative here, so they don't affect the
+        # max below.
+        masked_similarity = util.replace_masked_values(similarity_matrix,
                                                        question_mask.unsqueeze(1),
                                                        -1e7)
         # Shape: (batch_size, passage_length)
@@ -238,51 +257,34 @@ class BidirectionalAttentionFlowSimple(Model):
                                                                                     passage_length,
                                                                                     encoding_dim)
 
-        # ------- Original variant
-        # We replace masked values with something really negative here, so they don't affect the
-        # max below.
-        # masked_similarity = util.replace_masked_values(similarity_matrix,
-        #                                                question_mask.unsqueeze(1),
-        #                                                -1e7)
-        # # Shape: (batch_size, passage_length)
-        # question_passage_similarity = masked_similarity.max(dim=-1)[0].squeeze(-1)
-        # # Shape: (batch_size, passage_length)
-        # question_passage_attention = util.masked_softmax(question_passage_similarity, passage_mask)
-        # # Shape: (batch_size, encoding_dim)
-        # question_passage_vector = util.weighted_sum(encoded_passage, question_passage_attention)
-        # # Shape: (batch_size, passage_length, encoding_dim)
-        # tiled_question_passage_vector = question_passage_vector.unsqueeze(1).expand(batch_size,
-        #                                                                             passage_length,
-        #                                                                             encoding_dim)
-
         # ------- END
 
         # Shape: (batch_size, passage_length, encoding_dim * 4)
         # original beta combination function
-        # final_merged_passage = torch.cat([encoded_passage,
-        #                                   passage_question_vectors,
-        #                                   encoded_passage * passage_question_vectors,
-        #                                   encoded_passage * tiled_question_passage_vector],
-        #                                  dim=-1)
-
-        # v6:
-        final_merged_passage = torch.cat([tiled_question_passage_vector],
-                                         dim=-1)
-
-        # v7:
-        final_merged_passage = torch.cat([passage_question_vectors],
-                                         dim=-1)
-
-        # v8:
-        final_merged_passage = torch.cat([passage_question_vectors,
-                                          tiled_question_passage_vector],
-                                         dim=-1)
-
-        # v9:
         final_merged_passage = torch.cat([encoded_passage,
                                           passage_question_vectors,
-                                          encoded_passage * passage_question_vectors],
+                                          encoded_passage * passage_question_vectors,
+                                          encoded_passage * tiled_question_passage_vector],
                                          dim=-1)
+
+        # # v6:
+        # final_merged_passage = torch.cat([tiled_question_passage_vector],
+        #                                  dim=-1)
+        #
+        # # v7:
+        # final_merged_passage = torch.cat([passage_question_vectors],
+        #                                  dim=-1)
+        #
+        # # v8:
+        # final_merged_passage = torch.cat([passage_question_vectors,
+        #                                   tiled_question_passage_vector],
+        #                                  dim=-1)
+        #
+        # # v9:
+        # final_merged_passage = torch.cat([encoded_passage,
+        #                                   passage_question_vectors,
+        #                                   encoded_passage * passage_question_vectors],
+        #                                  dim=-1)
 
         modeled_passage = self._dropout(self._modeling_layer(final_merged_passage, passage_lstm_mask))
         modeling_dim = modeled_passage.size(-1)
