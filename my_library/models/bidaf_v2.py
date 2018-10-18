@@ -185,6 +185,7 @@ class BidafV2(Model):
         embedded_passage = self._highway_layer(self._text_field_embedder(passage))
         batch_size = embedded_question.size(0)
         passage_length = embedded_passage.size(1)
+        question_length = embedded_question.size(1)
         question_mask = util.get_text_field_mask(question).float()
         passage_mask = util.get_text_field_mask(passage).float()
         question_lstm_mask = question_mask if self._mask_lstms else None
@@ -216,7 +217,7 @@ class BidafV2(Model):
         # tiled_question_passage_vector = util.weighted_sum(q2c_vecs, passage_question_attention)
 
         # v2:
-        q2c_compressor = TimeDistributed(torch.nn.Linear(q2c_vecs.shape[1], encoded_passage.shape[1]))
+        q2c_compressor = TimeDistributed(torch.nn.Linear(question_length, passage_length))
         tiled_question_passage_vector = q2c_compressor(q2c_vecs.transpose(-1, -2)).transpose(-1, -2)
 
         # v3:
