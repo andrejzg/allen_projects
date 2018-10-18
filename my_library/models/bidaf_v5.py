@@ -190,13 +190,13 @@ class BidafV5(Model):
         question_lstm_mask = question_mask if self._mask_lstms else None
         passage_lstm_mask = passage_mask if self._mask_lstms else None
 
-        encoded_question = self._dropout(self._phrase_layer(embedded_question, question_lstm_mask))
+        # encoded_question = self._dropout(self._phrase_layer(embedded_question, question_lstm_mask))
 
         # # v5:
         # # remember to set token embeddings in the CONFIG JSON
         encoded_question = self._dropout(embedded_question)
 
-        # encoded_passage = self._dropout(self._phrase_layer(embedded_passage, passage_lstm_mask))
+        encoded_passage = self._dropout(self._phrase_layer(embedded_passage, passage_lstm_mask))
         encoding_dim = encoded_question.size(-1)
 
         # Shape: (batch_size, passage_length, question_length) -- SIMILARITY MATRIX
