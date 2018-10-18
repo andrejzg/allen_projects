@@ -16,8 +16,8 @@ from allennlp.training.metrics import BooleanAccuracy, CategoricalAccuracy, Squa
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-@Model.register("bidaf_v")
-class BidafOriginal(Model):
+@Model.register("bidaf_v3")
+class BidafV3(Model):
     """
     MODIFICATION NOTE:
     This class is a modification of BiDAF. In here we try to see what happens to our results
@@ -85,7 +85,7 @@ class BidafOriginal(Model):
                  regularizer: Optional[RegularizerApplicator] = None) -> None:
 
 
-        super(BidafOriginal, self).__init__(vocab, regularizer)
+        super(BidafV3, self).__init__(vocab, regularizer)
 
         self._text_field_embedder = text_field_embedder
         self._highway_layer = TimeDistributed(Highway(text_field_embedder.get_output_dim(),
@@ -216,12 +216,12 @@ class BidafOriginal(Model):
         # tiled_question_passage_vector = util.weighted_sum(q2c_vecs, passage_question_attention)
 
         # v2:
-        q2c_compressor = TimeDistributed(torch.nn.Linear(q2c_vecs.shape[1], encoded_passage.shape[1]))
-        tiled_question_passage_vector = q2c_compressor(q2c_vecs.transpose(-1, -2)).transpose(-1, -2)
+        # q2c_compressor = TimeDistributed(torch.nn.Linear(q2c_vecs.shape[1], encoded_passage.shape[1]))
+        # tiled_question_passage_vector = q2c_compressor(q2c_vecs.transpose(-1, -2)).transpose(-1, -2)
 
         # v3:
-        # q2c_compressor = TimeDistributed(torch.nn.Linear(q2c_vecs.shape[1], 1))
-        # tiled_question_passage_vector = q2c_compressor(q2c_vecs.transpose(-1, -2)).squeeze().unsqueeze(1).expand(batch_size, passage_length, encoding_dim)
+        q2c_compressor = TimeDistributed(torch.nn.Linear(q2c_vecs.shape[1], 1))
+        tiled_question_passage_vector = q2c_compressor(q2c_vecs.transpose(-1, -2)).squeeze().unsqueeze(1).expand(batch_size, passage_length, encoding_dim)
 
         # v4:
         # Re-application of query2context attention

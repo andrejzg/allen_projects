@@ -16,8 +16,8 @@ from allennlp.training.metrics import BooleanAccuracy, CategoricalAccuracy, Squa
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-@Model.register("bidaf_v")
-class BidafOriginal(Model):
+@Model.register("bidaf_v2")
+class BidafV2(Model):
     """
     MODIFICATION NOTE:
     This class is a modification of BiDAF. In here we try to see what happens to our results
@@ -85,7 +85,7 @@ class BidafOriginal(Model):
                  regularizer: Optional[RegularizerApplicator] = None) -> None:
 
 
-        super(BidafOriginal, self).__init__(vocab, regularizer)
+        super(BidafV2, self).__init__(vocab, regularizer)
 
         self._text_field_embedder = text_field_embedder
         self._highway_layer = TimeDistributed(Highway(text_field_embedder.get_output_dim(),

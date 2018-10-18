@@ -16,8 +16,8 @@ from allennlp.training.metrics import BooleanAccuracy, CategoricalAccuracy, Squa
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-@Model.register("bidaf_v")
-class BidafOriginal(Model):
+@Model.register("bidaf_v4")
+class BidafV4(Model):
     """
     MODIFICATION NOTE:
     This class is a modification of BiDAF. In here we try to see what happens to our results
@@ -85,7 +85,7 @@ class BidafOriginal(Model):
                  regularizer: Optional[RegularizerApplicator] = None) -> None:
 
 
-        super(BidafOriginal, self).__init__(vocab, regularizer)
+        super(BidafV4, self).__init__(vocab, regularizer)
 
         self._text_field_embedder = text_field_embedder
         self._highway_layer = TimeDistributed(Highway(text_field_embedder.get_output_dim(),
@@ -216,8 +216,8 @@ class BidafOriginal(Model):
         # tiled_question_passage_vector = util.weighted_sum(q2c_vecs, passage_question_attention)
 
         # v2:
-        q2c_compressor = TimeDistributed(torch.nn.Linear(q2c_vecs.shape[1], encoded_passage.shape[1]))
-        tiled_question_passage_vector = q2c_compressor(q2c_vecs.transpose(-1, -2)).transpose(-1, -2)
+        # q2c_compressor = TimeDistributed(torch.nn.Linear(q2c_vecs.shape[1], encoded_passage.shape[1]))
+        # tiled_question_passage_vector = q2c_compressor(q2c_vecs.transpose(-1, -2)).transpose(-1, -2)
 
         # v3:
         # q2c_compressor = TimeDistributed(torch.nn.Linear(q2c_vecs.shape[1], 1))
@@ -225,21 +225,21 @@ class BidafOriginal(Model):
 
         # v4:
         # Re-application of query2context attention
-        # new_similarity_matrix = self._matrix_attention(encoded_passage, q2c_vecs)
-        # masked_similarity = util.replace_masked_values(new_similarity_matrix,
-        #                                                question_mask.unsqueeze(1),
-        #                                                -1e7)
-        # # Shape: (batch_size, passage_length)
-        # question_passage_similarity = masked_similarity.max(dim=-1)[0].squeeze(-1)
-        # # Shape: (batch_size, passage_length)
-        # question_passage_attention = util.masked_softmax(question_passage_similarity, passage_mask)
-        # # Shape: (batch_size, encoding_dim)
-        # question_passage_vector = util.weighted_sum(encoded_passage, question_passage_attention)
-        # # Shape: (batch_size, passage_length, encoding_dim)
-        # tiled_question_passage_vector = question_passage_vector.unsqueeze(1).expand(batch_size,
-        #                                                                             passage_length,
-        #                                                                             encoding_dim)
-        #
+        new_similarity_matrix = self._matrix_attention(encoded_passage, q2c_vecs)
+        masked_similarity = util.replace_masked_values(new_similarity_matrix,
+                                                       question_mask.unsqueeze(1),
+                                                       -1e7)
+        # Shape: (batch_size, passage_length)
+        question_passage_similarity = masked_similarity.max(dim=-1)[0].squeeze(-1)
+        # Shape: (batch_size, passage_length)
+        question_passage_attention = util.masked_softmax(question_passage_similarity, passage_mask)
+        # Shape: (batch_size, encoding_dim)
+        question_passage_vector = util.weighted_sum(encoded_passage, question_passage_attention)
+        # Shape: (batch_size, passage_length, encoding_dim)
+        tiled_question_passage_vector = question_passage_vector.unsqueeze(1).expand(batch_size,
+                                                                                    passage_length,
+                                                                                    encoding_dim)
+
         # ------- Original variant
         # # We replace masked values with something really negative here, so they don't affect the
         # # max below.
